@@ -183,11 +183,24 @@ int lept_parse(lept_value* v,const char* json){
     return ret; 
 }
 
-void lept_free
+void lept_free(lept_value* v){
+    assert(v != NULL);
+    if(v->type == LEPT_STRING)
+        free(v->u.s.s);
+    v->type = LEPT_NULL;
+}
 
 lept_type lept_get_type(const lept_value* v){
     assert(v != NULL);
     return v->type;
+}
+
+int lept_get_boolean(const lept_value* v){
+    return 0;
+}
+
+void lept_set_boolean(lept_value* v){
+
 }
 
 double lept_get_number(const lept_value* v){
@@ -195,3 +208,26 @@ double lept_get_number(const lept_value* v){
     return v->u.n;
 }
 
+void lept_set_number(lept_value* v,double n ){
+
+}
+
+const char* lept_get_string(const lept_value* v){
+    assert(v != NULL && v->type == LEPT_STRING);
+    return v->u.s.s;
+}
+
+size_t lept_get_string_length(const lept_value* v){
+    assert(v != NULL && v->type == LEPT_STRING);
+    return v->u.s.len;
+}
+
+void lept_set_string(lept_value* v,const char* s,size_t len){
+    assert(v != NULL && (s != NULL || len == 0));
+    lept_free(v);
+    v->u.s.s = (char*)malloc(len+1);
+    memcpy(v->u.s.s,s,len);
+    v->u.s.s[len] = '\0';
+    v->u.s.len = len;
+    v->type = LEPT_STRING;
+}

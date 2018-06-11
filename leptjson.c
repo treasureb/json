@@ -157,12 +157,12 @@ static int lept_parse_string(lept_context* c,lept_value* v){
                 switch(*p++){
                     case '\"': PUTC(c,'\"');break;
                     case '\\': PUTC(c,'\\');break;
-                    case '/': PUTC(c,'\\');break;
-                    case 'b': PUTC(c,'\\');break;
-                    case 'f': PUTC(c,'\\');break;
-                    case 'n': PUTC(c,'\\');break;
-                    case 'r': PUTC(c,'\\');break;
-                    case 't': PUTC(c,'\\');break;
+                    case '/': PUTC(c,'/');break;
+                    case 'b': PUTC(c,'\b');break;
+                    case 'f': PUTC(c,'\f');break;
+                    case 'n': PUTC(c,'\n');break;
+                    case 'r': PUTC(c,'\r');break;
+                    case 't': PUTC(c,'\t');break;
                     case 'u':
                         if(!(p = lept_parse_hex4(p,&u)))
                             STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX);

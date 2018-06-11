@@ -39,7 +39,9 @@ enum{
     LEPT_PARSE_NUMBER_TOO_BIG,
     LEPT_PARSE_MISS_QUOTATION_MARK,
     LEPT_PARSE_INVALID_STRING_ESCAPE,
-    LEPT_PAESE_INVALID_STRING_CHAR
+    LEPT_PAESE_INVALID_STRING_CHAR,
+    LEPT_PARSE_INVALID_UNICODE_HEX,
+    LEPT_PARSE_INVALID_UNICODE_SURROGATE
 };
 
 #define lept_init(v) do { (v)->type = LEPT_NULL; } while(0)
@@ -55,7 +57,7 @@ lept_type lept_get_type(const lept_value* v);
 #define lept_set_null(v) lept_free(v)
 
 int lept_get_boolean(const lept_value* v);
-void lept_set_boolean(lept_value* v,int b);
+void lept_set_boolean(lept_value* v,double b);
 
 /* get the number */
 double lept_get_number(const lept_value* v);

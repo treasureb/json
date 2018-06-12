@@ -145,7 +145,7 @@ static const char* lept_parse_hex4(const char* p,unsigned* u){
 
 static void lept_encode_utf8(lept_context* c,unsigned u){
     if(u <= 0X7F)
-        PUTC(c,u & oxFF);
+        PUTC(c,u & 0xFF);
     else if(u <= 0x7FF){
         PUTC(c,0xC0 | ((u >> 6) & 0xFF));
         PUTC(c,0x80 | ( u       & 0x3F ));
@@ -208,14 +208,50 @@ static int lept_parse_string(lept_context* c,lept_value* v){
    }
 }
 
+//进行前置声明
+static int lept_parse_value(lept_context* c,lept_value* v);
+static int lept_parse_array(lept_context* c,lept_value* v){
+    size_t size = 0;
+    int ret = -1;
+    EXPECT(c,'[');
+    if(*c->json == ']'){
+        c->json++;
+        v->type = LEPT_ARRAY;
+        v->u.a.size = 0;
+        v->u.a.e = NULL;
+        return LEPT_PARSE_OK;
+    }
+    for(;;){
+        lept_value e;
+        lept_init(&e);
+        if((ret == lept_parse_value(c,&e)) != LEPT_PARSE_OK)
+            return ret;
+        memcpy(lept_context_push(c,sizeof(lept_value)),&e,sizeof(lept_value));
+        size++;
+        if(*c->json == ',')
+            c->json++;
+        else if(*c->json == ']'){
+            c->json++;
+            v->type = LEPT_ARRAY;
+            v->u.a.size = size;
+            size *= sizeof(lept_value);
+            memcpy(v->u.a.e = (lept_value*)malloc(size),lept_context_pop(c,size),size);
+            return LEPT_PARSE_OK;
+        }
+        else
+            return LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
+    }
+}
+
 static int lept_parse_value(lept_context* c,lept_value* v){
     switch(*c->json){
         case 't':   return lept_parse_literal(c,v,"true",LEPT_TRUE);
         case 'f':   return lept_parse_literal(c,v,"false",LEPT_FALSE);
         case 'n':   return lept_parse_literal(c,v,"null",LEPT_NULL);
-        case '\0':  return lept_parse_number(c,v);
         default:    return LEPT_PARSE_INVALID_VALUE;
         case '"':   return lept_parse_string(c,v);
+        case '[':   return lept_parse_array(c,v);
+        case '\0':   return LEPT_PARSE_EXPECT_VALUE;
     }
 }
 
@@ -291,4 +327,15 @@ void lept_set_string(lept_value* v,const char* s,size_t len){
     v->u.s.s[len] = '\0';
     v->u.s.len = len;
     v->type = LEPT_STRING;
+}
+
+size_t lept_get_array_size(const lept_value* v){
+    assert(v != NULL && v->type == LEPT_ARRAY);
+    return v->u.a.size;
+}
+
+lept_value* lept_get_array_element(const lept_value* v,size_t index){
+    assert(v != NULL && v->type == LEPT_ARRAY);
+    assert(index < v->u.a.size);
+    return &v->u.a.e[index];
 }

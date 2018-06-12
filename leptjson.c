@@ -168,7 +168,7 @@ static void lept_encode_utf8(lept_context* c,unsigned u){
 
 static int lept_parse_string(lept_context* c,lept_value* v){
    size_t head = c->top,len;
-   unsigned u;
+   unsigned u,u2;
    const char* p;
    EXPECT(c,'\"'); 
    p = c->json;
@@ -193,6 +193,17 @@ static int lept_parse_string(lept_context* c,lept_value* v){
                     case 'u':
                         if(!(p = lept_parse_hex4(p,&u)))
                             STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX);
+                        if(u >= 0xD800 && u <= 0xDBFF){
+                            if(*p++ != '\\')
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);
+                            if(*p++ != 'u')
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);
+                            if(!(p = lept_parse_hex4(p,&u2)))
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX);
+                            if(u2 < 0xDC00 || u2 > 0xDFFF)
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);
+                            u = (((u - 0Xd800) << 10) |(u2 -0XDC00)) + 0x10000;
+                        }
                         lept_encode_utf8(c,u);
                         break;
                     default:
@@ -210,10 +221,12 @@ static int lept_parse_string(lept_context* c,lept_value* v){
 
 //进行前置声明
 static int lept_parse_value(lept_context* c,lept_value* v);
+
 static int lept_parse_array(lept_context* c,lept_value* v){
-    size_t size = 0;
+    size_t i,size = 0;
     int ret = -1;
     EXPECT(c,'[');
+    lept_parse_whitespace(c);
     if(*c->json == ']'){
         c->json++;
         v->type = LEPT_ARRAY;
@@ -228,8 +241,10 @@ static int lept_parse_array(lept_context* c,lept_value* v){
             return ret;
         memcpy(lept_context_push(c,sizeof(lept_value)),&e,sizeof(lept_value));
         size++;
-        if(*c->json == ',')
+        if(*c->json == ','){
             c->json++;
+            lept_parse_whitespace(c);
+        }
         else if(*c->json == ']'){
             c->json++;
             v->type = LEPT_ARRAY;
@@ -238,9 +253,16 @@ static int lept_parse_array(lept_context* c,lept_value* v){
             memcpy(v->u.a.e = (lept_value*)malloc(size),lept_context_pop(c,size),size);
             return LEPT_PARSE_OK;
         }
-        else
+        else{
             return LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET;
+            break;
+        }
     }
+    //pop and free values on the stack
+    for(i = 0;i < size;++i){
+        lept_free((lept_value*)lept_context_pop(c,sizeof(lept_value)));
+    }
+    return ret;
 }
 
 static int lept_parse_value(lept_context* c,lept_value* v){
@@ -277,9 +299,20 @@ int lept_parse(lept_value* v,const char* json){
 }
 
 void lept_free(lept_value* v){
+    size_t i;
     assert(v != NULL);
-    if(v->type == LEPT_STRING)
+    switch(v->type){
+        //如果是数组类型，要进行循环删除
+    case LEPT_STRING:
         free(v->u.s.s);
+        break;
+    case LEPT_ARRAY:
+        for(i = 0;i < v->u.a.size;i++)
+            lept_free(&v->u.a.e[i]);
+        free(v->u.a.e);
+        break;
+    default:break;
+    }
     v->type = LEPT_NULL;
 }
 

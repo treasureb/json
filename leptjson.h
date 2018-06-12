@@ -14,21 +14,28 @@ typedef enum{
     LEPT_OBJECT
 }lept_type;
 
+//需要前置声明，因为下面的lept_value中用到了自身的类型
+typedef  struct lept_value lept_value;
+
 /* json的树形结构 */
-typedef struct{
+struct lept_value{
     /*
      * 一个类型不可能同时为字符串或者数字
      * 所以采用联合体节省空间
      */
     union{
         struct {
-            char* s;
-            size_t len;
+            lept_value* e;  //数组类型
+            size_t size;
+        }a;
+        struct {
+            char* s;        
+            size_t len;     //字符串类型
         }s;
-        double n;
+        double n;           //数字类型:
     }u;
     lept_type type;
-}lept_value;
+};
 
 /* 返回对应的错误码 */
 enum{
@@ -41,7 +48,8 @@ enum{
     LEPT_PARSE_INVALID_STRING_ESCAPE,
     LEPT_PAESE_INVALID_STRING_CHAR,
     LEPT_PARSE_INVALID_UNICODE_HEX,
-    LEPT_PARSE_INVALID_UNICODE_SURROGATE
+    LEPT_PARSE_INVALID_UNICODE_SURROGATE,
+    LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET
 };
 
 #define lept_init(v) do { (v)->type = LEPT_NULL; } while(0)
@@ -67,4 +75,6 @@ const char* lept_get_string(const lept_value* v);
 size_t lept_get_string_length(const lept_value* v);
 void lept_set_string(lept_value* v,const char* s,size_t len);
 
+size_t lept_get_array_size(const lept_value* v);
+lept_value* lept_get_array_element(const lept_value* v,size_t index);
 #endif /* LEPTJSON_H__*/
